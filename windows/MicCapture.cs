@@ -20,6 +20,9 @@ public sealed class MicCapture
     /// Sir typed instead (POST /turn/cancel): the recording under way ends now, with nothing heard.
     public void Abandon() => _done?.TrySetResult("abandoned");
 
+    /// Sir clicked the pill: the recording under way ends now, and what was heard counts.
+    public void Finish() => _done?.TrySetResult("manual");
+
     /// Record until trailing silence (or timeout); returns 16 kHz mono 16-bit WAV bytes.
     /// In an iPhone call the phone's microphone is the input.
     /// `preroll`: barge-in — Sir already started talking, so the last seconds of mic (the phone's
@@ -46,6 +49,7 @@ public sealed class MicCapture
         double resamplePos = 0;
         float prevSample = 0;
         var reason = "error";
+        float quietest = 0f, loudest = -120f;   // per-chunk dB after the grace, for the log
         foreach (var frame in preroll ?? Array.Empty<byte[]>())
         {
             var chunk = PhoneAudio.ToSamples(frame);
@@ -88,6 +92,8 @@ public sealed class MicCapture
                 OnLevel?.Invoke(Math.Clamp((db + 55f) / 45f, 0f, 1f));
 
                 if (totalDuration < VadGraceSeconds) return;
+                quietest = MathF.Min(quietest, db);
+                loudest = MathF.Max(loudest, db);
                 var decision = vad.Process(db, duration);
                 if (decision == Vad.Decision.Waiting && totalDuration >= NoSpeechTimeout)
                     done.TrySetResult("no-speech");
@@ -101,6 +107,8 @@ public sealed class MicCapture
             reason = await Task.WhenAny(done.Task, Task.Delay(TimeSpan.FromSeconds(MaxListenSeconds)))
                 == done.Task ? done.Task.Result : "max-cap";
             Log.Write($"mic: finished reason={reason} samples={samples.Count}");
+            // A room louder than the silence threshold never ends by VAD: the levels tell.
+            Log.Write(FormattableString.Invariant($"mic: levels quietest={quietest:F1}dB loudest={loudest:F1}dB silence<{vad.Threshold:F1}dB"));
         }
         catch (Exception e)
         {

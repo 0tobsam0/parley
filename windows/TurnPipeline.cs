@@ -43,6 +43,7 @@ public sealed class TurnPipeline
     {
         _queuedTurns = queuedTurns;
         _pill = pill;
+        if (pill is not null) pill.Clicked += () => _mic.Finish();
         _resumableList = resumableList;
         _resume = resume;
         _othersAlive = othersAlive;

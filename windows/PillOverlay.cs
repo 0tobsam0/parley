@@ -21,6 +21,7 @@ public sealed class PillOverlay : Form
         BackColor = Color.Magenta;
         TransparencyKey = Color.Magenta;
         DoubleBuffered = true;
+        Cursor = Cursors.Hand;   // clickable: ends the recording
         Width = 320;
         Height = 64;
         var screen = Screen.PrimaryScreen?.WorkingArea ?? new Rectangle(0, 0, 1280, 720);
@@ -40,6 +41,15 @@ public sealed class PillOverlay : Form
             cp.ExStyle |= 0x08000000 /*WS_EX_NOACTIVATE*/ | 0x00000080 /*WS_EX_TOOLWINDOW*/;
             return cp;
         }
+    }
+
+    /// A click on the pill: Sir is done talking (the VAD may not hear silence in a loud room).
+    public event Action? Clicked;
+
+    protected override void OnMouseClick(MouseEventArgs e)
+    {
+        base.OnMouseClick(e);
+        if (Active) Clicked?.Invoke();
     }
 
     public void Push(float level) => _level = Math.Clamp(level, 0f, 1f);

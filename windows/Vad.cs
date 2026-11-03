@@ -15,9 +15,12 @@ public sealed class Vad
 
     public enum Decision { Waiting, Speaking, Ended }
 
+    /// The level below which a chunk counts as silence (follows Sir's speaking loudness).
+    public float Threshold => Math.Min(-45f, Math.Max(-70f, _speechAvgDb - DropDb));
+
     public Decision Process(float rmsDb, double duration)
     {
-        var threshold = Math.Min(-45f, Math.Max(-70f, _speechAvgDb - DropDb));
+        var threshold = Threshold;
         if (rmsDb >= threshold)
         {
             Started = true;
