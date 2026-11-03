@@ -622,7 +622,8 @@ public sealed class TurnPipeline
 
     private void ShowPill(bool show)
     {
-        try { _pill?.BeginInvoke(() => { if (show) _pill.ShowPill(); else _pill.HidePill(); }); }
+        var phone = PhoneCall.Active;   // the call's mic records: the pill shows a phone
+        try { _pill?.BeginInvoke(() => { if (show) _pill.ShowPill(phone); else _pill.HidePill(); }); }
         catch { }
     }
 

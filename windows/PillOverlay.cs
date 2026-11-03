@@ -57,9 +57,14 @@ public sealed class PillOverlay : Form
     // True while the recording pill is visible; notifications suppress themselves.
     public static bool Active;
 
-    public void ShowPill()
+    // In a phone call the phone's mic records (the PC's stays shut): the orb becomes a phone, so
+    // the waveform reads as the phone's audio.
+    private bool _phone;
+
+    public void ShowPill(bool phone = false)
     {
         Active = true;
+        _phone = phone;
         Array.Clear(_bars);
         _level = 0;
         Show();
@@ -102,7 +107,8 @@ public sealed class PillOverlay : Form
         using var orbBrush = new SolidBrush(Color.FromArgb(255, 90, 160, 255));
         using var glow = new SolidBrush(Color.FromArgb(60, 90, 160, 255));
         g.FillEllipse(glow, cx - orb, cy - orb, orb * 2, orb * 2);
-        g.FillEllipse(orbBrush, cx - orbBase / 2, cy - orbBase / 2, orbBase, orbBase);
+        if (_phone) DrawPhone(g, cx, cy);
+        else g.FillEllipse(orbBrush, cx - orbBase / 2, cy - orbBase / 2, orbBase, orbBase);
 
         // waveform bars (right of orb)
         var x0 = 56f;
@@ -115,6 +121,32 @@ public sealed class PillOverlay : Form
             var x = x0 + i * step;
             g.FillRectangle(bar, x, Height / 2f - h / 2f, Math.Max(2f, step - 2f), h);
         }
+    }
+
+    // A small handset outline in the orb's blue: body, earpiece slit, home dot.
+    private static void DrawPhone(Graphics g, float cx, float cy)
+    {
+        const float w = 12f, h = 20f;
+        var body = new RectangleF(cx - w / 2, cy - h / 2, w, h);
+        using var fill = new SolidBrush(Color.FromArgb(255, 90, 160, 255));
+        using var outline = Capsule(Rectangle.Round(body), 3);
+        g.FillPath(fill, outline);
+        using var ink = new SolidBrush(Color.FromArgb(235, 28, 28, 32));
+        g.FillRectangle(ink, cx - 2.5f, body.Top + 2.5f, 5f, 1.5f);
+        g.FillEllipse(ink, cx - 1.5f, body.Bottom - 4.5f, 3f, 3f);
+    }
+
+    // A rounded rectangle with corner radius `radius`.
+    private static GraphicsPath Capsule(Rectangle r, int radius)
+    {
+        var d = radius * 2;
+        var p = new GraphicsPath();
+        p.AddArc(r.Left, r.Top, d, d, 180, 90);
+        p.AddArc(r.Right - d, r.Top, d, d, 270, 90);
+        p.AddArc(r.Right - d, r.Bottom - d, d, d, 0, 90);
+        p.AddArc(r.Left, r.Bottom - d, d, d, 90, 90);
+        p.CloseFigure();
+        return p;
     }
 
     private static GraphicsPath Capsule(Rectangle r)
