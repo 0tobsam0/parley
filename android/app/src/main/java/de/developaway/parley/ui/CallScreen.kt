@@ -32,7 +32,16 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import de.developaway.parley.Slide
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -95,8 +104,7 @@ fun CallScreen(call: CallController, accent: Color, images: Map<String, Bitmap> 
             // stays until the next line begins.
             val due = if (phase == CallPhase.active) call.slide() else null
             if (due != null) {
-                val order = call.slides.sortedBy { it.at }
-                SlideCard(due, images[due.id], order.indexOf(due), order.size, accent, Modifier.fillMaxWidth())
+                SlideDeck(call.slides.sortedBy { it.at }, due, images, accent)
             } else Box(Modifier.size(260.dp), contentAlignment = Alignment.Center) {
                 if (phase == CallPhase.ringing) {
                     val pulse = (0.5 + 0.5 * sin(t * 3)).toFloat()
@@ -246,5 +254,53 @@ private fun Orb(color: Color, t: Double, level: Float, alpha: Float, modifier: M
             drawCircle(color.copy(alpha = (0.2f + 0.8f * depth) * alpha), (0.5f + 0.9f * depth) * density,
                 Offset(c.x + (x * radius * wobble).toFloat(), c.y + (y * radius * wobble).toFloat()))
         }
+    }
+}
+
+/**
+ * The line's slides as a deck (as iOS CallView.slideDeck): the shown card follows the finger, a
+ * swipe past a third of the width turns to the next or previous one. It follows the voice again
+ * 10 s after the last swipe, or at once when Sir swipes back to the card due now.
+ */
+@Composable
+private fun SlideDeck(order: List<Slide>, due: Slide, images: Map<String, Bitmap>, accent: Color) {
+    var picked by remember { mutableStateOf<String?>(null) }
+    var pickedAt by remember { mutableLongStateOf(0L) }
+    var drag by remember { mutableFloatStateOf(0f) }
+    val shown = Slide.shown(order, due, picked, pickedAt, System.currentTimeMillis())
+    val current = order.indexOf(shown).coerceAtLeast(0)
+    var width by remember { mutableFloatStateOf(1f) }
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .pointerInput(order, current) {
+                width = size.width.toFloat().coerceAtLeast(1f)
+                detectHorizontalDragGestures(
+                    onDragEnd = {
+                        val next = (current + when {
+                            drag < -width / 3 -> 1
+                            drag > width / 3 -> -1
+                            else -> 0
+                        }).coerceIn(0, order.size - 1)
+                        drag = 0f
+                        val id = order[next].id
+                        if (id == due.id) { picked = null; pickedAt = 0L } else { picked = id; pickedAt = System.currentTimeMillis() }
+                    },
+                    onDragCancel = { drag = 0f },
+                ) { change, amount ->
+                    change.consume()
+                    val pastEnd = (current == 0 && drag + amount > 0) || (current == order.size - 1 && drag + amount < 0)
+                    drag += if (pastEnd) amount * 0.3f else amount
+                }
+            },
+    ) {
+        val d = (drag / width).coerceIn(-1f, 1f)
+        SlideCard(shown, images[shown.id], current, order.size, accent,
+            Modifier.fillMaxWidth().graphicsLayer {
+                translationX = drag
+                alpha = 1f - kotlin.math.abs(d) * 0.6f
+                val scale = 1f - kotlin.math.abs(d) * 0.06f
+                scaleX = scale; scaleY = scale
+            })
     }
 }

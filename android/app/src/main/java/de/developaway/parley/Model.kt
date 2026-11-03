@@ -168,6 +168,10 @@ data class Slide(
     companion object {
         /** The slide due `t` seconds into the line: the last one whose time has come. */
         fun current(slides: List<Slide>, t: Double): Slide? = slides.filter { it.at <= t }.maxByOrNull { it.at }
+
+        /** Which slide the deck shows: one swiped to in the last 10 s, else the one due now (as iOS CallView.shownSlide). */
+        fun shown(order: List<Slide>, due: Slide, picked: String?, pickedAt: Long, now: Long): Slide =
+            order.firstOrNull { it.id == picked }?.takeIf { now - pickedAt < 10_000 } ?: due
     }
 }
 

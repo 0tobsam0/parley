@@ -28,6 +28,15 @@ class SlidesTest {
         assertEquals("slide-ab-2", Slide.current(items, 60.0)?.id)
     }
 
+    @Test fun aSwipedToSlideStaysForTenSeconds() {
+        val items = (frame as Incoming.Slides).items
+        val due = items[2]
+        assertEquals("slide-ab-2", Slide.shown(items, due, null, 0, 50_000).id)            // nothing picked: the voice's
+        assertEquals("slide-ab-0", Slide.shown(items, due, "slide-ab-0", 40_000, 49_999).id) // swiped back 9.999 s ago
+        assertEquals("slide-ab-2", Slide.shown(items, due, "slide-ab-0", 40_000, 50_000).id) // 10 s on: follows the voice
+        assertEquals("slide-ab-2", Slide.shown(items, due, "gone", 49_000, 50_000).id)       // a slide of an older line
+    }
+
     @Test fun onlyTheCallsLineGetsThem() {
         assertEquals(true, CallLine.step(frame, onLine = true, share = false, canRing = true, idle = false) is CallStep.Slides)
         assertNull(CallLine.step(frame, onLine = false, share = true, canRing = true, idle = false))
