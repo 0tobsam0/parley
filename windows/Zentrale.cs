@@ -500,6 +500,7 @@ public sealed class Delivery
             }
             _started[key] = DateTime.UtcNow;
         }
+        if (name is not null && resume is null) SeedProjectName(dir, name);
         if (_start(dir, resume))
         {
             if (resume is not null) Log.Write($"dispatch: {dir} → session {resume} resumed");
@@ -509,6 +510,22 @@ public sealed class Delivery
         }
         lock (_started) _started.Remove(key);
         return DispatchResult.Failed;
+    }
+
+    // A named start in a folder without its own spoken name: write it to .parley.json first, so
+    // the new session's /parley:voice greets with it instead of asking Sir for one. A folder that
+    // has a name keeps it (several sessions may share it).
+    private static void SeedProjectName(string dir, string name)
+    {
+        try
+        {
+            if (Runtimes.WindowsPath(dir, Runtimes.For(dir)) is not { } win) return;
+            var file = Path.Combine(win, ".parley.json");
+            if (File.Exists(file)) return;
+            File.WriteAllText(file, JsonSerializer.Serialize(new { name }) + "\n");
+            Log.Write($"dispatch: {dir} named {name} (.parley.json)");
+        }
+        catch (Exception e) { Log.Write($"dispatch: could not name {dir} ({e.Message})"); }
     }
 
     // Every 4 s: a start whose session is up is done; one that hangs 90 s is shown to the Zentrale.
