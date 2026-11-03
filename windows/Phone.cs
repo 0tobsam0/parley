@@ -224,12 +224,29 @@ public sealed class PhoneLine
     public void OnAudio(byte[] frame)
     {
         Action<byte[]>? sink;
+        var rejoined = false;
         lock (_gate)
         {
+            // The phone sends its mic only in a call. Audio while the host knows none: the host
+            // restarted mid-call (the phone stayed on the relay and doesn't repeat `call start`)
+            // — take the call up again rather than talk and listen on the PC beside it. Not right
+            // after a call ended (its last frames may trail behind). Both phones ask for 24 kHz.
+            if (!_call && (_lastCallEnd is not { } ended || DateTime.UtcNow - ended > TimeSpan.FromSeconds(5)))
+            {
+                _call = true;
+                _downRate = 24_000;
+                _barge = false; _recent.Clear(); _ending = false; _topic = null; _sent = null;
+                rejoined = true;
+            }
             _audioAt = DateTime.UtcNow;
             sink = _sink;
             _recent.Enqueue(frame);
             while (_recent.Count > PrerollFrames) _recent.Dequeue();
+        }
+        if (rejoined)
+        {
+            Log.Write($"{_name}: call taken up again (phone audio, but no call known — the host restarted?)");
+            _ = PushState();
         }
         sink?.Invoke(frame);
     }
