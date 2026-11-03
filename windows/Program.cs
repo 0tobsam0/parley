@@ -30,7 +30,7 @@ internal sealed class TrayApp : ApplicationContext
     private readonly Server _server;
     private readonly PillOverlay _pill = new();
     private readonly ToolStripMenuItem _relayStatus = new() { Enabled = false, Visible = false };
-    private readonly ToolStripMenuItem _callStatus = new("iPhone: Anruf aktiv") { Enabled = false, Visible = false };
+    private readonly ToolStripMenuItem _callStatus = new("Handy: Anruf aktiv") { Enabled = false, Visible = false };
     private readonly ToolStripMenuItem _awayStatus = new("Unterwegs-Modus an") { Enabled = false, Visible = false };
     private ToolStripMenuItem? _briefItem;   // tray "Ohne Floskeln" (the phone can set it too)
     private readonly ToolStripMenuItem _snapshots = new("Snapshots");
@@ -564,7 +564,7 @@ internal sealed class TrayApp : ApplicationContext
     private void RefreshRelayStatus()
     {
         _relayStatus.Visible = _relay is not null;
-        _relayStatus.Text = _relay?.Connected == true ? "iPhone: verbunden mit Relay" : "iPhone: Relay nicht erreichbar";
+        _relayStatus.Text = _relay?.Connected == true ? "Handy: verbunden mit Relay" : "Handy: Relay nicht erreichbar";
         _callStatus.Visible = PhoneCall.Active;
         _awayStatus.Visible = PhoneCall.Away;
     }
@@ -622,7 +622,7 @@ internal sealed class TrayApp : ApplicationContext
     private static void ShowRelayHint()
     {
         var answer = MessageBox.Show(
-            "Fürs iPhone braucht Parley die Adresse deines Relays. Trag sie in credentials.json ein, z. B. " +
+            "Fürs Handy braucht Parley die Adresse deines Relays. Trag sie in credentials.json ein, z. B. " +
             "\"relayUrl\": \"https://parley-relay.<konto>.workers.dev\", und wähle dann erneut „Handy verbinden…“.\n\n" +
             Config.CredentialsPath + "\n\nOrdner jetzt öffnen?",
             "Relay nicht eingerichtet", MessageBoxButtons.YesNo, MessageBoxIcon.Information);

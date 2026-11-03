@@ -139,7 +139,7 @@ public sealed class TrayPanel : Form
         // Pills: connection, Unterwegs, Stumm
         var relay = _hooks.Relay();
         var (status, dot) = PhoneCall.Active ? ("Im Anruf", Idle) : relay == true ? ("Verbunden", Idle)
-            : relay == false ? ("Offline", Stopped) : ("Kein iPhone", Stopped);
+            : relay == false ? ("Offline", Stopped) : ("Kein Handy", Stopped);
         var sw = (int)g.MeasureString(status, body).Width + S(34);
         var pill = new Rectangle(pad, y, sw, S(30));
         Fill(g, pill, Color.FromArgb(40, dot), pill.Height / 2);
@@ -213,7 +213,7 @@ public sealed class TrayPanel : Form
 
         // Footer
         var fx = pad;
-        foreach (var (label, act) in new (string, Action)[] { ("iPhone", _hooks.Pair), ("Statistik", _hooks.Stats), ("Setup", _hooks.Setup) })
+        foreach (var (label, act) in new (string, Action)[] { ("Handy", _hooks.Pair), ("Statistik", _hooks.Stats), ("Setup", _hooks.Setup) })
         {
             var bw = (int)g.MeasureString(label, body).Width + S(22);
             var r = new Rectangle(fx, y, bw, S(30));
