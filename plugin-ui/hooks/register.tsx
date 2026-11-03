@@ -22,7 +22,7 @@ const delivered = atom({ plugin: 'parley-ui', key: 'delivered' } as const, [] as
 
 const PANE = 'parley'
 const BARS = '▁▂▃▄▅▆▇█'
-const APP = 'http://127.0.0.1:8787' // ponytail: default port; read PARLEY_PORT when someone moves it
+let APP = 'http://127.0.0.1:8787' // PARLEY_PORT moves it, as for the hooks (resolveApp)
 const LIVE: readonly Phase[] = ['speaking', 'listening', 'transcribing']
 
 // Same rule as plugin/scripts/stop-hook.sh: the LAST opening tag wins, its close optional (for
@@ -327,8 +327,9 @@ async function presence($: EngineInterface, sid: string, cwd: string, label: str
   const u = await $.session.usage().catch(() => null)
   const turn = await read($, awaiting)
   const ack = (await read($, delivered)).at(-1)
+  const rt = await runtime($)
   const body = JSON.stringify({
-    session_id: sid, label, project: basename(cwd), cwd,
+    session_id: sid, label, project: basename(cwd), cwd, ...(rt ? { runtime: rt } : {}),
     ...((await hostCarries($)) ? { async: 1 } : {}), ...(turn ? { awaiting: turn } : {}), ...(ack ? { ack } : {}),
     host: (await $.env.get('CLAUDE_CODE_HOST_SESSION_ID').catch(() => undefined)) ?? null, // the desktop app's id: tiles open it
     state: (await read($, isWorking)) ? 'working' : (await read($, tasks)).length ? 'background' : 'idle',
@@ -369,13 +370,40 @@ async function presence($: EngineInterface, sid: string, cwd: string, label: str
   }
 }
 
+// PARLEY_PORT, as the hooks read it: once, before the first request.
+let appResolved = false
+async function resolveApp($: EngineInterface) {
+  if (appResolved) return
+  appResolved = true
+  const port = (await $.env.get('PARLEY_PORT').catch(() => undefined)) ?? ''
+  if (/^\d{1,5}$/.test(port)) APP = `http://127.0.0.1:${port}`
+}
+
+// Where this session runs, as the hooks send it (docs/RUNTIME.md): a WSL distro, or an SSH
+// remote that names itself with PARLEY_SSH_HOST. null on macOS / native Windows — no field.
+type Runtime = { kind: 'wsl'; distro: string; home: string } | { kind: 'ssh'; host: string; home: string }
+let runtimeRead = false
+let runtimeVal: Runtime | null = null
+export async function runtime($: EngineInterface): Promise<Runtime | null> {
+  if (runtimeRead) return runtimeVal
+  const distro = (await $.env.get('WSL_DISTRO_NAME').catch(() => undefined)) ?? ''
+  const ssh = (await $.env.get('SSH_CONNECTION').catch(() => undefined)) ?? ''
+  const sshHost = (await $.env.get('PARLEY_SSH_HOST').catch(() => undefined)) ?? ''
+  const homeDir = (await $.env.get('HOME').catch(() => undefined)) ?? ''
+  runtimeVal = distro ? { kind: 'wsl', distro, home: homeDir } : ssh && sshHost ? { kind: 'ssh', host: sshHost, home: homeDir } : null
+  runtimeRead = true
+  return runtimeVal
+}
+
 // Brings a session forward in the desktop app: its claude:// deep link, opened by the OS.
 const HOST = /^local_[A-Za-z0-9-]{1,64}$/ // the desktop's own check; also keeps the argv inert
 async function openSession($: EngineInterface, host: string) {
   if (!HOST.test(host)) return
   const url = `claude://code/continue?session=${host}`
   const windows = (await $.env.get('OS').catch(() => undefined)) === 'Windows_NT'
-  await $.process.run(windows ? ['cmd', '/c', 'start', '', url] : ['open', url]).catch(() => null)
+  // WSL: the desktop app lives on Windows, its deep link opens through Windows' own `start`.
+  const wsl = (await runtime($))?.kind === 'wsl'
+  await $.process.run(windows ? ['cmd', '/c', 'start', '', url] : wsl ? ['cmd.exe', '/c', 'start', '', url] : ['open', url]).catch(() => null)
 }
 
 async function log($: EngineInterface, who: Line["who"], text: string) {
@@ -395,6 +423,7 @@ let home = '' // the folder the session started in
 let loop: { cancel(): void } | null = null
 let beat = -Infinity, sentAt = -Infinity, fetchedAt = -Infinity
 async function arm($: EngineInterface) {
+  await resolveApp($)
   if (!home) return
   const t = await $.clock.now()
   if (loop && t - beat < 3000) return
@@ -476,12 +505,13 @@ export const register: Register = on => {
       const sid = e.session_id || (await $.session.id())
       const cwd = home || e.cwd
       const turn = `${sid}:${await $.clock.now()}`
+      const rt = await runtime($)
       const body = JSON.stringify({
         event: 'turn', session_id: sid, cwd, project: basename(cwd),
         tmux_pane: (await $.env.get('TMUX_PANE').catch(() => undefined)) ?? '',
         speak: parts.speak, label: await readLabel($, cwd), listen: spoken.listen,
         ...(parts.replies.length ? { replies: parts.replies } : {}), ...(parts.slides.length ? { slides: parts.slides } : {}),
-        ...(spoken.to ? { to: spoken.to } : {}), async: true, turn_id: turn,
+        ...(spoken.to ? { to: spoken.to } : {}), async: true, turn_id: turn, ...(rt ? { runtime: rt } : {}),
       })
       const res = await $.http.fetch(`${APP}/turn`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body }).catch(() => null)
       let queued = false

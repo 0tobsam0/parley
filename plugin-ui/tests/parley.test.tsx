@@ -325,6 +325,39 @@ test('tiles open their desktop session with a ↗ button, never on this session 
   await term.unmount()
 })
 
+test('WSL: presence names the distro, a tile opens through Windows, PARLEY_PORT moves the app', async ($, on) => {
+  const clock = mock.clock(on)
+  const now = clock.now()
+  const sessions = [{ id: 'b', label: 'Shop', project: 'shop', state: 'idle', since: now, until: null, voice: false, host: 'local_shop-1' }]
+  const calls: { url: string; body: string }[] = []
+  const runs: string[][] = []
+  const env: Record<string, string> = { WSL_DISTRO_NAME: 'Ubuntu-24.04', HOME: '/home/tobi', PARLEY_PORT: '8790' }
+  on('http.fetch', async ($, e) => {
+    calls.push({ url: e.url, body: e.init?.body ?? '' })
+    return { value: { status: 200, ok: true, headers: {}, text: e.url.endsWith('/sessions') ? JSON.stringify({ sessions }) : '{}' } }
+  })
+  on('env.get', async ($, e) => ({ value: env[e.name] }) as never)
+  on('process.run', async ($, e) => { runs.push([...e.argv]); return { value: { exitCode: 0, stdout: '', stderr: '' } } as never })
+  on('session.usage', async () => ({ value: { startedAt: 0, context: { window: 200000 }, rateLimits: [] } }) as never)
+  on('command.register', async () => ({ value: undefined }) as never)
+  on('session.id', async () => ({ value: 's1' }))
+  on('session.start', async ($, e) => ({ cwd: e.cwd }) as never)
+  on('classic.Stop', async () => ({}))
+  on('ui.render', async ($, e) => { const { Text } = $.ui.resolve(e); return <Text>engine</Text> })
+
+  await $.session.start({ cwd: '/home/tobi/shop', surface: 'desktop', isInteractive: true } as never)
+  await $.classic.Stop({ stop_hook_active: false, last_assistant_message: '<speak-end>Ok.</speak-end>', cwd: '/home/tobi/shop' })
+  await clock.advance(1100)
+  const presence = calls.filter(c => c.url.endsWith('/presence'))
+  expect(presence.at(-1)?.body).toContain('"runtime":{"kind":"wsl","distro":"Ubuntu-24.04","home":"/home/tobi"}')
+  expect(calls.every(c => c.url.startsWith('http://127.0.0.1:8790/'))).toBe(true)
+
+  const desk = await $.ui.mount({ plugin: 'parley-ui', surface: 'desktop', component: 'Pane', requestId: 'parley', props: {} as never })
+  await desk.press({ key: 'open-b' })
+  expect(runs).toEqual([['cmd.exe', '/c', 'start', '', 'claude://code/continue?session=local_shop-1']])
+  await desk.unmount()
+})
+
 test('a finished turn parks the band — there is no "bereit"', async ($, on) => {
   mock.clock(on)
   on('classic.Stop', async () => ({}))
