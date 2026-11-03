@@ -438,7 +438,9 @@ public sealed class TurnPipeline
     /// prompt — its hook gives up after two minutes). As macOS.
     private async Task<(bool reached, bool calledBack)> ReachPhone(string label, string session, bool callBack = true)
     {
-        if (Ring is null) return (PhoneCall.Active, false);
+        // Rings only in Unterwegs (not Stumm), as macOS guards every reachPhone with `ringing`:
+        // otherwise Ring answers Missed and RingOnce turns that into a 30-min wait for a call back.
+        if (Ring is null || !PhoneCall.Away || PhoneCall.Silent) return (PhoneCall.Active, false);
         async Task<RingOutcome> RingOnce()
         {
             var o = await Ring!(label);
