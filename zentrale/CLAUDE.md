@@ -61,7 +61,9 @@ besten zwei, drei nennen und fragen, welches gemeint ist.
    ```bash
    creds="$HOME/Library/Application Support/Parley/credentials.json"   # macOS
    [ -f "$creds" ] || creds="${APPDATA:-}/Parley/credentials.json"      # Windows (Git Bash)
+   [ -f "$creds" ] || creds="$(ls /mnt/c/Users/*/AppData/Roaming/Parley/credentials.json 2>/dev/null | head -1)"   # WSL
    base="$(jq -r '.projectsDir // empty' "$creds" 2>/dev/null)"
+   case "$base" in [A-Za-z]:\\*) [ -n "${WSL_DISTRO_NAME:-}" ] && base="$(wslpath -u "$base")";; esac   # WSL: a Windows path
    base="${base:-$HOME/workspace/privat}"; base="${base/#\~/$HOME}"
    ```
 

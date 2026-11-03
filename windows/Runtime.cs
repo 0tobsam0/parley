@@ -108,6 +108,19 @@ public static class Runtimes
         return rt is { IsWsl: true } ? $@"\\wsl.localhost\{rt.Distro}" + path.Replace('/', '\\') : null;
     }
 
+    // Claude Code installed on Windows itself (PATH, or the native installer's ~/.local/bin)? A
+    // Windows PC whose Claude lives only in WSL has none: the Zentrale then runs in WSL. Asked once.
+    public static bool ClaudeOnWindows => _claudeOnWindows.Value;
+    private static readonly Lazy<bool> _claudeOnWindows = new(() =>
+    {
+        var dirs = (Environment.GetEnvironmentVariable("PATH") ?? "").Split(';', StringSplitOptions.RemoveEmptyEntries).ToList();
+        dirs.Add(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".local", "bin"));
+        foreach (var d in dirs)
+            foreach (var exe in new[] { "claude.exe", "claude.cmd", "claude.ps1" })
+                try { if (File.Exists(Path.Combine(d.Trim('"'), exe))) return true; } catch (ArgumentException) { }
+        return false;
+    });
+
     public static bool DirExists(string? path, SessionRuntime? rt = null)
     {
         try { return WindowsPath(path, rt) is { } p && Directory.Exists(p); }

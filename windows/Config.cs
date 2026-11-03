@@ -86,6 +86,11 @@ public sealed class Config
             if (rate <= 0) rate = 1.0;
             var voice = S("googleVoice");
             string Or(string key, string fallback) => S(key).Trim() is { Length: > 0 } v ? v : fallback;
+            // Claude Code only in WSL: the Zentrale and new projects live there too (Linux paths,
+            // started through wsl.exe) — a Windows folder would get a claude that isn't installed.
+            var wslHomeSeen = S("wslHome").Trim();
+            string? wslHome = S("wslDistro").Trim().Length > 0 && wslHomeSeen.StartsWith('/') && !Runtimes.ClaudeOnWindows
+                ? wslHomeSeen.TrimEnd('/') : null;
             return new Config
             {
                 GoogleKey = S("googleAPIKey"),
@@ -103,8 +108,8 @@ public sealed class Config
                 RelayRoom = S("relayRoom"),
                 RelaySecret = S("relaySecret"),
                 RelayKey = S("relayKey"),
-                ZentraleDir = Or("zentraleDir", DefaultZentraleDir),
-                ProjectsDir = Or("projectsDir", DefaultProjectsDir),
+                ZentraleDir = Or("zentraleDir", wslHome is { } zh ? zh + "/workspace/privat/parley-zentrale" : DefaultZentraleDir),
+                ProjectsDir = Or("projectsDir", wslHome is { } ph ? ph + "/workspace/privat" : DefaultProjectsDir),
                 ApnsKeyId = S("apnsKeyId").Trim(),
                 ApnsTeamId = Or("apnsTeamId", Apns.DefaultTeamId),
                 ApnsKeyP8 = S("apnsKeyP8"),

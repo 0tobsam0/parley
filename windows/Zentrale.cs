@@ -234,7 +234,9 @@ public static class Zentrale
     public static string Ensure(Config c)
     {
         var dir = Dir(c);
-        Directory.CreateDirectory(dir);
+        // A WSL Zentrale (Linux path): its files are written through \\wsl.localhost\….
+        var io = Runtimes.WindowsPath(dir) ?? throw new IOException($"{dir}: no WSL distro known");
+        Directory.CreateDirectory(io);
         var template = Path.Combine(c.ResolvedSourceDir, "zentrale");
         if (Directory.Exists(template))
         {
@@ -242,13 +244,13 @@ public static class Zentrale
             {
                 var rel = Path.GetRelativePath(template, file);
                 if (string.Equals(rel, "README.md", StringComparison.OrdinalIgnoreCase)) continue;
-                var dest = Path.Combine(dir, rel);
+                var dest = Path.Combine(io, rel);
                 if (File.Exists(dest)) continue;
                 Directory.CreateDirectory(Path.GetDirectoryName(dest)!);
                 File.Copy(file, dest);
             }
         }
-        var name = Path.Combine(dir, ".parley.json");
+        var name = Path.Combine(io, ".parley.json");
         if (!File.Exists(name)) File.WriteAllText(name, "{ \"name\": \"" + Routing.ZentraleName + "\" }\n");
         return dir;
     }
