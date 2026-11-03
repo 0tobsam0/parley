@@ -1,4 +1,8 @@
+# LF everywhere: a Windows checkout (core.autocrlf) otherwise turns the plugin's files into CRLF,
+# and WSL — which runs the plugin from that checkout — sees every one of them as modified.
+* text=auto eol=lf
 # Shell scripts must stay LF — CRLF breaks bash shebangs on Windows (Git Bash/WSL).
 *.sh text eol=lf
 *.pl text eol=lf
 *.ps1 text eol=crlf
+*.bat text eol=crlf

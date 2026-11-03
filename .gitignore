@@ -9,3 +9,7 @@ app/Sources/Parley/Resources/ready/*.pcm
 secrets*
 .claude/ralph-loop.local.md
 app/Sources/Parley/Resources/lines/**/*.pcm
+
+# Windows build output (dotnet build / publish from the repo)
+windows/bin/
+windows/obj/
