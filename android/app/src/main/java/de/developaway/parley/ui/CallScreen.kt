@@ -1,5 +1,6 @@
 package de.developaway.parley.ui
 
+import android.graphics.Bitmap
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -61,7 +62,7 @@ private val Raised = Color(0xFF2E2C2A)
 
 /** The call (ios CallView): ringing, connecting, Parley speaking, listening, idle — always dark. */
 @Composable
-fun CallScreen(call: CallController, accent: Color, minimise: () -> Unit) {
+fun CallScreen(call: CallController, accent: Color, images: Map<String, Bitmap> = emptyMap(), minimise: () -> Unit) {
     val now by rememberNow(250)
     val t by rememberSeconds()
     val phase = call.phase
@@ -90,7 +91,13 @@ fun CallScreen(call: CallController, accent: Color, minimise: () -> Unit) {
                 }
             }
             Spacer(Modifier.weight(0.6f))
-            Box(Modifier.size(260.dp), contentAlignment = Alignment.Center) {
+            // A slide (docs/CALL-SLIDES.md) takes the ring's place while Parley talks about it; it
+            // stays until the next line begins.
+            val due = if (phase == CallPhase.active) call.slide() else null
+            if (due != null) {
+                val order = call.slides.sortedBy { it.at }
+                SlideCard(due, images[due.id], order.indexOf(due), order.size, accent, Modifier.fillMaxWidth())
+            } else Box(Modifier.size(260.dp), contentAlignment = Alignment.Center) {
                 if (phase == CallPhase.ringing) {
                     val pulse = (0.5 + 0.5 * sin(t * 3)).toFloat()
                     Canvas(Modifier.fillMaxSize()) {

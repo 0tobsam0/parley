@@ -163,6 +163,7 @@ class AppModel(private val app: Application) {
             CallStep.LinkChanged -> call.relayChanged()
             is CallStep.Audio -> call.hostAudioChanged(s.state, s.label)
             is CallStep.Captions -> call.captionReceived(s.caption)
+            is CallStep.Slides -> call.slidesReceived(s.items)
             is CallStep.Ring -> { call.use(from); call.reportIncoming(s.label) }
             null -> {}
         }
@@ -340,7 +341,7 @@ class AppModel(private val app: Application) {
             }
             // Part 3: a call on his own line — the owner's host rings him for a question (in the
             // foreground, or while Unterwegs keeps the room open in the background).
-            is Incoming.Ring, is Incoming.Audio, is Incoming.CaptionFrame -> if (g.active) guestRelays[id]?.let { toCall(it, f) }
+            is Incoming.Ring, is Incoming.Audio, is Incoming.CaptionFrame, is Incoming.Slides -> if (g.active) guestRelays[id]?.let { toCall(it, f) }
             is Incoming.Move -> {
                 // Let in: the fresh room, sealed to this phone's key — the invite's room is dead from here on.
                 if (g.active) return

@@ -147,6 +147,30 @@ data class Caption(val words: List<String>, val at: List<Double>, val end: Doubl
 enum class HostAudio { idle, speaking, listening }
 
 /** What arrives from the relay. */
+/**
+ * One slide of a spoken line (`slides` frame, docs/CALL-SLIDES.md): shown from `at` seconds into
+ * the line. Kinds: image (pixels in an `image` frame keyed by `id`), chart, metric, text
+ * (ios/ParleyMobile/Frames.swift `Slide`).
+ */
+data class Slide(
+    val id: String,
+    val at: Double,
+    val kind: String,
+    val title: String? = null,
+    val text: String? = null,
+    val chart: String? = null,
+    val labels: List<String> = emptyList(),
+    val values: List<Double> = emptyList(),
+    val unit: String? = null,
+    val metric: String? = null,
+    val note: String? = null,
+) {
+    companion object {
+        /** The slide due `t` seconds into the line: the last one whose time has come. */
+        fun current(slides: List<Slide>, t: Double): Slide? = slides.filter { it.at <= t }.maxByOrNull { it.at }
+    }
+}
+
 sealed interface Incoming {
     data class Sessions(val snapshot: Snapshot) : Incoming
     data class Peer(val host: Boolean) : Incoming
@@ -155,6 +179,8 @@ sealed interface Incoming {
     data class History(val page: HistoryPage) : Incoming
     data class Image(val key: String, val mime: String?, val data: String?) : Incoming
     data class CaptionFrame(val caption: Caption) : Incoming
+    /** v3: slides for the line about to play. */
+    data class Slides(val items: List<Slide>) : Incoming
     data class SnapshotOpened(val result: SnapshotResult) : Incoming
     /** v7: the link for a new share of `session` (Sir's side). */
     data class ShareLink(val id: String, val session: String, val link: String) : Incoming
@@ -185,6 +211,7 @@ object Frames {
             "history" -> Incoming.History(history(o))
             "image" -> Incoming.Image(o.optString("key"), o.str("mime"), o.str("data"))
             "caption" -> caption(o)?.let { Incoming.CaptionFrame(it) } ?: Incoming.Ignored
+            "slides" -> Incoming.Slides(o.optJSONArray("items").objects().mapNotNull { slide(it) })
             "snapshot" -> o.str("id")?.let { id ->
                 Incoming.SnapshotOpened(SnapshotResult(id, o.optString("name"), o.optJSONArray("results").objects().mapNotNull { r ->
                     r.str("id")?.let { SnapshotOutcome(it, r.optString("name"), r.optString("result")) }
@@ -274,6 +301,15 @@ object Frames {
             ChatItem(id, i.optString("k", "other"), i.str("text"), i.optString("who") == "user", i.num("at"), i.ints("add"), i.ints("del"), i.str("by"))
         },
     )
+
+    /** A slide; null without an id or kind (a malformed one doesn't cost the others). */
+    private fun slide(o: JSONObject): Slide? {
+        val id = o.s("id") ?: return null
+        val kind = o.s("kind") ?: return null
+        val labels = o.optJSONArray("labels")?.let { a -> (0 until a.length()).map { a.optString(it) } } ?: emptyList()
+        val values = o.optJSONArray("values")?.let { a -> (0 until a.length()).map { a.optDouble(it) }.filter { !it.isNaN() } } ?: emptyList()
+        return Slide(id, o.num("at") ?: 0.0, kind, o.s("title"), o.s("text"), o.s("chart"), labels, values, o.s("unit"), o.s("metric"), o.s("note"))
+    }
 
     private fun caption(o: JSONObject): Caption? {
         val words = o.optJSONArray("words") ?: return null

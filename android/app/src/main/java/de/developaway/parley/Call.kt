@@ -39,6 +39,8 @@ class CallController(private val context: Context, private val scope: CoroutineS
     /** Just connected, the host hasn't spoken yet: the screen stays as while connecting. */
     var awaitingHost by mutableStateOf(false); private set
     var caption by mutableStateOf<Caption?>(null); private set
+    /** The line's slides (docs/CALL-SLIDES.md), on the captions' clock. */
+    var slides by mutableStateOf<List<Slide>>(emptyList()); private set
     /** "Sprechen" was tapped while the host was idle; cleared when it leaves idle. */
     var wakeSent by mutableStateOf(false); private set
     var showsScreen by mutableStateOf(false)
@@ -172,6 +174,7 @@ class CallController(private val context: Context, private val scope: CoroutineS
 
     fun captionReceived(c: Caption) {
         caption = c
+        slides = emptyList()   // a new line: its slides (if any) come right after
         captionBase = audio.received   // it arrives just before its line's first frame: time runs once those play
         autoHangUp?.cancel()
         if (c.last && Prefs.autoHangUp(context) && inCall && !isTest) {
@@ -184,6 +187,11 @@ class CallController(private val context: Context, private val scope: CoroutineS
             }
         }
     }
+
+    fun slidesReceived(s: List<Slide>) { slides = s }
+
+    /** The slide to show now, if the line has one due. */
+    fun slide(): Slide? = if (slides.isEmpty()) null else Slide.current(slides, captionTime())
 
     /** Seconds of the caption's line played so far. */
     fun captionTime(): Double = if (isDemo) ((System.currentTimeMillis() - demoStart) / 1000.0) % ((caption?.end ?: 1.0) + 1.5) else if (isTest) ((System.currentTimeMillis() - since) / 1000.0) else maxOf(0, audio.played - captionBase) * 0.02
@@ -285,7 +293,8 @@ class CallController(private val context: Context, private val scope: CoroutineS
         hostAudio = HostAudio.idle
         line = home                      // a guest's call is over: the own host's line again
         isTest = false
-        caption = null
+        caption = null   // the next call starts clean: no old subtitles or slides
+        slides = emptyList()
         muted = false
         audio.muted = false
         speaker = false
@@ -321,6 +330,7 @@ sealed interface CallStep {
     data object LinkChanged : CallStep
     data class Audio(val state: HostAudio, val label: String?) : CallStep
     data class Captions(val caption: Caption) : CallStep
+    data class Slides(val items: List<Slide>) : CallStep
     /** Ring on the relay the frame came over (`use(line)` first). */
     data class Ring(val label: String?) : CallStep
 }
@@ -338,6 +348,7 @@ object CallLine {
         is Incoming.Peer -> if (onLine) CallStep.LinkChanged else null
         is Incoming.Audio -> if (onLine) CallStep.Audio(f.state, f.label) else null
         is Incoming.CaptionFrame -> if (onLine) CallStep.Captions(f.caption) else null
+        is Incoming.Slides -> if (onLine) CallStep.Slides(f.items) else null
         else -> null
     }
 }

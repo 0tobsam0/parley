@@ -76,7 +76,7 @@ class MainActivity : ComponentActivity() {
                     AnimatedVisibility(call.showsScreen && call.phase != CallPhase.none,
                         enter = slideInVertically { it }, exit = slideOutVertically { it }) {
                         BackHandler { call.showsScreen = false }
-                        CallScreen(call, LocalColors.current.accent) { call.showsScreen = false }
+                        CallScreen(call, LocalColors.current.accent, m.images) { call.showsScreen = false }
                     }
                 }
             }
