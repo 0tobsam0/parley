@@ -497,7 +497,7 @@ public sealed class RelayClient
     {
         if (_seal is null) return text;
         if (text == "pong") return null;
-        if (_seal.OpenText(text) is not { } o) { Dropped("text", "can't open (other key?)"); return null; }
+        if (_seal.OpenText(text) is not { } o) { Dropped("text", WhyNot(text)); return null; }
         return Fresh(o.SentMs, o.Nonce, "text") ? o.Json : null;
     }
 
@@ -506,6 +506,21 @@ public sealed class RelayClient
         if (_seal is null) return data;
         if (_seal.OpenBinary(data) is not { } o) { Dropped("audio", "can't open (other key?)"); return null; }
         return Fresh(o.SentMs, o.Nonce, "audio") ? o.Data : null;
+    }
+
+    // Why a phone text frame didn't open — no secrets, just its shape.
+    private static string WhyNot(string text)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(text);
+            var r = doc.RootElement;
+            var t = r.TryGetProperty("t", out var tv) && tv.ValueKind == JsonValueKind.String ? tv.GetString() : null;
+            if (!r.TryGetProperty("e", out var ev) || ev.ValueKind != JsonValueKind.String)
+                return $"unsealed t={t ?? "?"} (the phone has no end-to-end key: pair it again)";
+            return $"sealed t={t ?? "?"} ({ev.GetString()!.Length} chars) but not with this key";
+        }
+        catch (JsonException) { return $"not JSON ({text.Length} chars)"; }
     }
 
     private bool Fresh(long sentMs, byte[] nonce, string kind)
