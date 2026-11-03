@@ -136,12 +136,12 @@ public static class Runtimes
     }
 
     // Starts Claude Code in a WSL folder in a new Windows Terminal tab (else a console window):
-    // wsl.exe -d <distro> --cd <dir> -- bash -lc 'exec "$@"' bash claude …. A login shell, so
+    // wsl.exe -d <distro> --cd <dir> --exec bash -lc 'exec "$@"' bash claude …. A login shell, so
     // ~/.local/bin (the native installer's claude) is on PATH; the arguments go through "$@",
     // never through a command string.
     public static bool StartWsl(SessionRuntime rt, string dir, string[] claudeArgs)
     {
-        var wsl = new[] { "wsl.exe", "-d", rt.Distro!, "--cd", dir, "--", "bash", "-lc", "exec \"$@\"", "bash" }.Concat(claudeArgs).ToArray();
+        var wsl = new[] { "wsl.exe", "-d", rt.Distro!, "--cd", dir, "--exec", "bash", "-lc", "exec \"$@\"", "bash" }.Concat(claudeArgs).ToArray();
         try
         {
             var wt = new ProcessStartInfo("wt.exe") { UseShellExecute = false };
