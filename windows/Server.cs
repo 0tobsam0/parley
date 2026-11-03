@@ -148,6 +148,8 @@ public sealed class Server
             string body;
             using (var r = new StreamReader(req.InputStream, Encoding.UTF8))
                 body = await r.ReadToEndAsync();
+            // Any sender may say where its session runs (a WSL distro): remembered for its folder.
+            if (body.Length > 0) Runtimes.SeenIn(body);
 
             if (req.HttpMethod == "POST" && path == "/ready")
             {
@@ -330,7 +332,9 @@ public sealed class Server
                 var raw = d?.Cwd ?? (past is null ? null : Transcript.Summary(past)?.Cwd);
                 var cwd = d is null || string.IsNullOrWhiteSpace(raw) || !Path.IsPathRooted(raw)
                     ? null : CwdPath.Resolve(raw, Config.Load().ProjectsDir);
-                if (d is null || cwd is null || !Directory.Exists(cwd))
+                // A live session there takes it even when the app can't see the folder (a WSL
+                // distro it hasn't heard of); else the folder must exist where it runs.
+                if (d is null || cwd is null || (Sessions.DeliverableIn(cwd) is null && !Runtimes.DirExists(cwd, Runtimes.For(cwd, d.Runtime))))
                 {
                     await Respond(ctx, 400, "{\"ok\":false,\"error\":\"cwd must be an existing absolute folder\"}");
                     return;
@@ -671,7 +675,7 @@ public sealed class Server
             {
                 string result;
                 if (Sessions.Running(item.Id).Alive) result = "running";
-                else if (!Directory.Exists(item.Cwd)) result = "missing";
+                else if (!Runtimes.DirExists(item.Cwd)) result = "missing";
                 else
                 {
                     var resume = Transcript.IsSessionId(item.Id) && Transcript.File(item.Id) is not null ? item.Id : null;

@@ -33,6 +33,8 @@ public sealed class TurnPayload
     // Hookless (docs/HOOKLESS.md): the mod carries the turn — queued, its reply delivered later.
     [JsonPropertyName("async"), JsonConverter(typeof(LooseBool))] public bool Async { get; set; }
     [JsonPropertyName("turn_id")] public string? TurnId { get; set; }
+    // Where the session runs (Runtime.cs, docs/RUNTIME.md): a WSL distro or an SSH remote; null = this PC.
+    [JsonPropertyName("runtime")] public SessionRuntime? Runtime { get; set; }
 
     [JsonIgnore] public bool WantsListen => Listen ?? true;
     [JsonIgnore] public string SpokenLabel => string.IsNullOrEmpty(Label) ? Project : Label!;
@@ -68,6 +70,8 @@ public sealed class PresencePayload
     [JsonPropertyName("async"), JsonConverter(typeof(LooseBool))] public bool Async { get; set; }
     [JsonPropertyName("awaiting")] public string? Awaiting { get; set; }
     [JsonPropertyName("ack")] public string? Ack { get; set; }
+    // Where the session runs (Runtime.cs, docs/RUNTIME.md): a WSL distro or an SSH remote; null = this PC.
+    [JsonPropertyName("runtime")] public SessionRuntime? Runtime { get; set; }
 
     public static PresencePayload? Decode(string body)
     {
@@ -110,6 +114,8 @@ public sealed class PermissionPayload
     [JsonPropertyName("cwd")] public string? Cwd { get; set; }
     [JsonPropertyName("tool_name")] public string? ToolName { get; set; }
     [JsonPropertyName("tool_input")] public JsonElement? ToolInput { get; set; }
+    // Where the session runs (Runtime.cs, docs/RUNTIME.md): a WSL distro or an SSH remote; null = this PC.
+    [JsonPropertyName("runtime")] public SessionRuntime? Runtime { get; set; }
 
     public static PermissionPayload? Decode(string body)
     {
@@ -130,6 +136,8 @@ public sealed class DispatchPayload
     // That one session's own name ("Literally Apps SEO"); without `resume` a new session beside
     // one already running in the folder.
     [JsonPropertyName("name")] public string? Name { get; set; }
+    // Where the session runs (Runtime.cs, docs/RUNTIME.md): a WSL distro or an SSH remote; null = this PC.
+    [JsonPropertyName("runtime")] public SessionRuntime? Runtime { get; set; }
 
     public static DispatchPayload? Decode(string body)
     {

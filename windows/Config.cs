@@ -32,6 +32,9 @@ public sealed class Config
     public string PhonePushToken { get; init; } = "";
     public string PhonePushEnv { get; init; } = "production";   // production | development
     public bool PhoneAway { get; init; }
+    // The last WSL distro a session reported (Runtime.cs): where a fresh dispatch starts.
+    public string WslDistro { get; init; } = "";
+    public string WslHome { get; init; } = "";
     public bool PhoneSilent { get; init; }          // Unterwegs + Stumm: a notification instead of a call
     public int RoundSeconds { get; init; } = 90;    // Fragerunde (the phone's setting): 0 = never wait
     public string PhoneAlertToken { get; init; } = "";   // notification push token (hex)
@@ -108,6 +111,8 @@ public sealed class Config
                 PhonePushToken = S("phonePushToken").Trim(),
                 PhonePushEnv = S("phonePushEnv") == "development" ? "development" : "production",
                 PhoneAway = S("phoneAway") == "1",
+                WslDistro = S("wslDistro").Trim(),
+                WslHome = S("wslHome").Trim(),
                 PhoneSilent = S("phoneSilent") == "1",
                 RoundSeconds = int.TryParse(S("roundSeconds"), out var rs) ? rs : 90,
                 PhoneAlertToken = S("phoneAlertToken").Trim(),

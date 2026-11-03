@@ -15,10 +15,13 @@ public static class CwdPath
 {
     // One spelling per folder: Windows separators, no trailing one, ".." resolved, "~" expanded,
     // and Git Bash's /c/Users/… as C:\Users\… (the Zentrale's curl sends $HOME-style paths).
+    // A WSL / SSH session's Linux path (/home/sir/proj) stays a Linux path: it is where the session
+    // runs, and Runtime.cs maps it when the app needs to reach it.
     public static string Normalize(string? path)
     {
         var p = (path ?? "").Trim();
         if (p.Length == 0) return "";
+        if (Runtimes.IsLinuxPath(p)) return p.Length > 1 ? p.TrimEnd('/') : p;
         if (p == "~" || p.StartsWith("~/", StringComparison.Ordinal) || p.StartsWith("~\\", StringComparison.Ordinal))
             p = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile) + p[1..];
         var msys = Regex.Match(p, @"^/([A-Za-z])(/.*)?$");
@@ -33,11 +36,12 @@ public static class CwdPath
         return p.Length > 3 ? p.TrimEnd('\\') : p;   // keep a drive root as "C:\"
     }
 
-    // Windows paths compare case-insensitively.
+    // Windows paths compare case-insensitively, Linux paths as they are spelled.
     public static bool Same(string? a, string? b)
     {
         var x = Normalize(a);
-        return x.Length > 0 && string.Equals(x, Normalize(b), StringComparison.OrdinalIgnoreCase);
+        return x.Length > 0 && string.Equals(x, Normalize(b),
+            Runtimes.IsLinuxPath(x) ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase);
     }
 
     // A /dispatch cwd: absolute as is; a bare name/relative path lives under projectsDir. null =
@@ -46,6 +50,7 @@ public static class CwdPath
     {
         var p = Normalize(cwd);
         if (p.Length == 0) return null;
+        if (Runtimes.IsLinuxPath(p)) return p;
         if (!Path.IsPathFullyQualified(p))
         {
             if (Path.IsPathRooted(p)) return null;
@@ -263,6 +268,13 @@ public static class SessionStarter
     public static bool Start(string dir, string? resume = null)
     {
         ClaudeTrust.Accept(dir);   // no "trust this folder?" in Parley's starts (Sir's rule)
+        // A Linux folder: the session runs in its WSL distro, not as Windows' claude.
+        if (Runtimes.IsLinuxPath(dir))
+        {
+            if (Runtimes.For(dir) is { IsWsl: true } rt) return Runtimes.StartWsl(rt, dir, ClaudeArgs(resume));
+            Log.Write($"session: {dir} is a Linux folder, but no WSL session reported its distro yet");
+            return false;
+        }
         try
         {
             var wt = new ProcessStartInfo("wt.exe") { UseShellExecute = false };
@@ -310,7 +322,7 @@ public static class SessionCloser
     public static string? Close(string id)
     {
         var p = Pick(id, Running(), Claimed());
-        if (p is null) return "no running claude process found for that session";
+        if (p is null) return Runtimes.Wsl().Count > 0 ? Runtimes.CloseWsl(id) : "no running claude process found for that session";
         try
         {
             using var claude = Process.GetProcessById(p.Pid);
@@ -593,6 +605,12 @@ public static class ClaudeTrust
 
     public static bool Accept(string dir, string? file = null)
     {
+        // A WSL folder: the distro's own ~/.claude.json, keyed by the Linux path as Claude Code there writes it.
+        if (file is null && Runtimes.IsLinuxPath(dir))
+        {
+            if (Runtimes.For(dir) is not { IsWsl: true } rt) return false;
+            file = Runtimes.HomeFile(rt.Distro!, rt.Home!, ".claude.json");
+        }
         file ??= File;
         try
         {

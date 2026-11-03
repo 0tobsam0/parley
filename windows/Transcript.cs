@@ -35,14 +35,21 @@ public static class Transcript
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".claude", "projects");
 
     // The transcript of `session` (a Claude Code session id), null for Codex / unknown ids.
+    // Without `root`: this PC's ~/.claude/projects, then each WSL distro's (Runtime.cs).
     public static string? File(string session, string? root = null)
     {
         if (session.Length == 0 || session.IndexOfAny(new[] { '/', '\\' }) >= 0 || session.Contains("..")) return null;
-        root ??= Projects;
-        if (!Directory.Exists(root)) return null;
-        return Directory.EnumerateDirectories(root)
-            .Select(d => Path.Combine(d, session + ".jsonl"))
-            .FirstOrDefault(System.IO.File.Exists);
+        foreach (var r in root is null ? Runtimes.TranscriptRoots() : new[] { root })
+        {
+            try
+            {
+                if (!Directory.Exists(r)) continue;
+                if (Directory.EnumerateDirectories(r).Select(d => Path.Combine(d, session + ".jsonl"))
+                        .FirstOrDefault(System.IO.File.Exists) is { } f) return f;
+            }
+            catch (Exception) { }   // a distro that isn't running / reachable
+        }
+        return null;
     }
 
     // The last `bytes` of the file as whole JSON lines (the first, partial one dropped).
@@ -187,9 +194,8 @@ public static class Transcript
     // (all of them for an empty query). Scans the `scan` most recently written transcripts.
     public static List<Past> FindPast(string? query, int limit = 10, string? root = null, int scan = 400)
     {
-        root ??= Projects;
-        if (!Directory.Exists(root)) return new List<Past>();
-        var files = Directory.EnumerateDirectories(root)
+        var files = (root is null ? Runtimes.TranscriptRoots() : new[] { root })
+            .SelectMany(r => { try { return Directory.Exists(r) ? Directory.EnumerateDirectories(r).ToList() : new List<string>(); } catch (Exception) { return new List<string>(); } })
             .SelectMany(d => Directory.EnumerateFiles(d, "*.jsonl"))
             .Select(f => new FileInfo(f))
             .OrderByDescending(f => f.LastWriteTimeUtc)
