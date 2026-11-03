@@ -76,6 +76,7 @@ public static class RelayHost
     public static void SayHello(string device)
     {
         PhoneHello = (device.Length == 0 ? "Ihrem Handy" : device, DateTime.UtcNow);
+        Log.Write($"relay: phone hello ({PhoneHello.Value.Device})");
         PhoneHelloChanged?.Invoke();
     }
 }
@@ -495,13 +496,37 @@ public sealed class RelayClient
     private string? Unseal(string text)
     {
         if (_seal is null) return text;
-        return text != "pong" && _seal.OpenText(text) is { } o && _replay.Accept(o.SentMs, o.Nonce, NowMs) ? o.Json : null;
+        if (text == "pong") return null;
+        if (_seal.OpenText(text) is not { } o) { Dropped("text", "can't open (other key?)"); return null; }
+        return Fresh(o.SentMs, o.Nonce, "text") ? o.Json : null;
     }
 
     private byte[]? Unseal(byte[] data)
     {
         if (_seal is null) return data;
-        return _seal.OpenBinary(data) is { } o && _replay.Accept(o.SentMs, o.Nonce, NowMs) ? o.Data : null;
+        if (_seal.OpenBinary(data) is not { } o) { Dropped("audio", "can't open (other key?)"); return null; }
+        return Fresh(o.SentMs, o.Nonce, "audio") ? o.Data : null;
+    }
+
+    private bool Fresh(long sentMs, byte[] nonce, string kind)
+    {
+        var now = NowMs;
+        if (_replay.Accept(sentMs, nonce, now)) return true;
+        var skew = now - sentMs;
+        Dropped(kind, Math.Abs(skew) > (long)RelaySeal.Window.TotalMilliseconds
+            ? $"phone clock off by {skew / 1000.0:F0} s" : "replayed");
+        return false;
+    }
+
+    // A phone frame the host throws away — silent before, so a phone with a wrong clock looked
+    // simply unpaired. Once a minute at most (audio comes ~50 frames a second).
+    private long _droppedLogAt = long.MinValue;
+    private void Dropped(string kind, string why)
+    {
+        var now = Environment.TickCount64;
+        if (now - _droppedLogAt < 60_000) return;
+        _droppedLogAt = now;
+        Log.Write($"relay: dropped a phone {kind} frame — {why}");
     }
 
     private async Task ReceiveLoopAsync(ClientWebSocket ws, CancellationToken ct)
