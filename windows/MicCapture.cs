@@ -108,7 +108,7 @@ public sealed class MicCapture
                 == done.Task ? done.Task.Result : "max-cap";
             Log.Write($"mic: finished reason={reason} samples={samples.Count}");
             // A room louder than the silence threshold never ends by VAD: the levels tell.
-            Log.Write(FormattableString.Invariant($"mic: levels quietest={quietest:F1}dB loudest={loudest:F1}dB silence<{vad.Threshold:F1}dB"));
+            Log.Write(FormattableString.Invariant($"mic: levels quietest={quietest:F1}dB loudest={loudest:F1}dB floor={vad.FloorDb:F1}dB silence<{vad.Threshold:F1}dB"));
         }
         catch (Exception e)
         {
