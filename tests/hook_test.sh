@@ -12,6 +12,10 @@ trap 'rm -f "$bodyfile" "${readyfile:-}"; [ -n "${srv:-}" ] && kill "$srv" 2>/de
 
 fail() { echo "FAIL: $1" >&2; exit 1; }
 
+# Run as on a plain host even from WSL or an SSH login: the WSL /health probe would take the
+# listener's one connection, and the runtime field is tested on its own below.
+unset WSL_DISTRO_NAME SSH_CONNECTION PARLEY_SSH_HOST
+
 # One-shot listener: writes the POST body of a single request to $bodyfile.
 readyfile="$(mktemp)"
 start_listener() {
@@ -69,7 +73,16 @@ got_speak="$(jq -r '.speak' < "$bodyfile")"
 [ "$(jq -r '.event' < "$bodyfile")" = "turn" ] || fail "event != turn"
 [ "$(jq -r '.session_id' < "$bodyfile")" = "abc123" ] || fail "session_id mismatch"
 [ "$(jq -r '.project' < "$bodyfile")" = "parley" ] || fail "project mismatch"
+[ "$(jq -r 'has("runtime")' < "$bodyfile")" = "false" ] || fail "plain host sent a runtime"
 echo "PASS: tagged input -> correct /turn JSON"
+
+# --- Test 1b: an SSH remote that names itself -> runtime {kind:ssh, host, home} ---
+start_listener
+printf '%s' "$in1" | SSH_CONNECTION="10.0.0.2 5000 10.0.0.1 22" PARLEY_SSH_HOST=root-box HOME=/root PARLEY_PORT=$port bash "$hook"
+wait "$srv" 2>/dev/null || true
+[ "$(jq -c '.runtime' < "$bodyfile")" = '{"kind":"ssh","host":"root-box","home":"/root"}' ] \
+  || fail "ssh runtime mismatch: $(jq -c '.runtime' < "$bodyfile")"
+echo "PASS: SSH remote -> runtime field"
 
 # --- Test 2: multiline / quotes / unicode -> valid JSON, exact text ---
 start_listener

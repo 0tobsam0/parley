@@ -43,11 +43,22 @@ for _ in 1 2 3 4 5 6 7 8 9 10 11 12; do
   sleep 0.5
 done
 
+# Where this session runs, for the host (docs/RUNTIME.md): a WSL distro, or an SSH remote that
+# names itself with PARLEY_SSH_HOST. The Windows app needs it to reach the session's files and
+# start or resume sessions there. Unset (macOS, native Windows) → no field, as before.
+runtime="null"
+if [ -n "${WSL_DISTRO_NAME:-}" ]; then
+  runtime="$(jq -nc --arg d "$WSL_DISTRO_NAME" --arg h "${HOME:-}" '{kind:"wsl", distro:$d, home:$h}')"
+elif [ -n "${SSH_CONNECTION:-}" ] && [ -n "${PARLEY_SSH_HOST:-}" ]; then
+  runtime="$(jq -nc --arg s "$PARLEY_SSH_HOST" --arg h "${HOME:-}" '{kind:"ssh", host:$s, home:$h}')"
+fi
+
 payload="$(jq -n \
   --arg tmux_pane "${TMUX_PANE:-}" \
   --arg cwd "$PWD" \
   --arg project "$(basename "$PWD")" \
-  '{event:"ready", tmux_pane:$tmux_pane, cwd:$cwd, project:$project}')"
+  --argjson runtime "$runtime" \
+  '{event:"ready", tmux_pane:$tmux_pane, cwd:$cwd, project:$project} + (if $runtime != null then {runtime:$runtime} else {} end)')"
 
 armed=0
 if [ "$reachable" -eq 1 ]; then

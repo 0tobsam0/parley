@@ -29,12 +29,22 @@ no_decision() {
   exit 0
 }
 
-payload="$(printf '%s' "$input" | jq -c --arg pd "${CLAUDE_PROJECT_DIR:-}" '{
+# Where this session runs, for the host (docs/RUNTIME.md): a WSL distro, or an SSH remote that
+# names itself with PARLEY_SSH_HOST. The Windows app needs it to reach the session's files and
+# start or resume sessions there. Unset (macOS, native Windows) → no field, as before.
+runtime="null"
+if [ -n "${WSL_DISTRO_NAME:-}" ]; then
+  runtime="$(jq -nc --arg d "$WSL_DISTRO_NAME" --arg h "${HOME:-}" '{kind:"wsl", distro:$d, home:$h}')"
+elif [ -n "${SSH_CONNECTION:-}" ] && [ -n "${PARLEY_SSH_HOST:-}" ]; then
+  runtime="$(jq -nc --arg s "$PARLEY_SSH_HOST" --arg h "${HOME:-}" '{kind:"ssh", host:$s, home:$h}')"
+fi
+
+payload="$(printf '%s' "$input" | jq -c --arg pd "${CLAUDE_PROJECT_DIR:-}" --argjson runtime "$runtime" '{
   session_id: (.session_id // ""),
   cwd:        (if $pd != "" then $pd else (.cwd // "") end),
   tool_name:  (.tool_name // ""),
   tool_input: (.tool_input // {})
-}' 2>/dev/null)" || no_decision
+} + (if $runtime != null then {runtime:$runtime} else {} end)' 2>/dev/null)" || no_decision
 [ -n "$payload" ] || no_decision
 
 # Host resolution (same as stop-hook.sh): 127.0.0.1 everywhere (macOS, native Git Bash,

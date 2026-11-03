@@ -131,6 +131,16 @@ project="$(basename "${cwd:-unknown}")"
 label=""
 [ -f "$cwd/.parley.json" ] && label="$(jq -r '.name // ""' "$cwd/.parley.json" 2>/dev/null || echo "")"
 
+# Where this session runs, for the host (docs/RUNTIME.md): a WSL distro, or an SSH remote that
+# names itself with PARLEY_SSH_HOST. The Windows app needs it to reach the session's files and
+# start or resume sessions there. Unset (macOS, native Windows) → no field, as before.
+runtime="null"
+if [ -n "${WSL_DISTRO_NAME:-}" ]; then
+  runtime="$(jq -nc --arg d "$WSL_DISTRO_NAME" --arg h "${HOME:-}" '{kind:"wsl", distro:$d, home:$h}')"
+elif [ -n "${SSH_CONNECTION:-}" ] && [ -n "${PARLEY_SSH_HOST:-}" ]; then
+  runtime="$(jq -nc --arg s "$PARLEY_SSH_HOST" --arg h "${HOME:-}" '{kind:"ssh", host:$s, home:$h}')"
+fi
+
 payload="$(jq -n \
   --arg event "turn" \
   --arg session_id "$session_id" \
@@ -143,10 +153,12 @@ payload="$(jq -n \
   --argjson listen "$listen" \
   --argjson replies "${replies:-[]}" \
   --argjson slides "${slides:-[]}" \
+  --argjson runtime "$runtime" \
   '{event:$event, session_id:$session_id, cwd:$cwd, project:$project, tmux_pane:$tmux_pane, speak:$speak, label:$label, listen:$listen}
    + (if ($replies | length) > 0 then {replies:$replies} else {} end)
    + (if ($slides | length) > 0 then {slides:$slides} else {} end)
-   + (if $to != "" then {to:$to} else {} end)')"
+   + (if $to != "" then {to:$to} else {} end)
+   + (if $runtime != null then {runtime:$runtime} else {} end)')"
 
 # Blocks while the turn is queued + spoken + recorded + transcribed. With many parallel
 # projects a turn can wait long in the queue before it is its turn to
@@ -169,8 +181,8 @@ inject() {
 # /wake payload: the parked loop below, and the wait.
 wpayload="$(jq -n \
   --arg session_id "$session_id" --arg cwd "$cwd" --arg project "$project" \
-  --arg tmux_pane "${TMUX_PANE:-}" --arg label "$label" \
-  '{session_id:$session_id, cwd:$cwd, project:$project, tmux_pane:$tmux_pane, label:$label}')"
+  --arg tmux_pane "${TMUX_PANE:-}" --arg label "$label" --argjson runtime "$runtime" \
+  '{session_id:$session_id, cwd:$cwd, project:$project, tmux_pane:$tmux_pane, label:$label} + (if $runtime != null then {runtime:$runtime} else {} end)')"
 
 # "Warte X Minuten" — the app asked us to pause, then continue. Wait, then inject the resume
 # prompt so Claude picks up on its own. Meanwhile poll /wake: Sir's "Fortsetzen" ends the wait

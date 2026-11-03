@@ -14,6 +14,7 @@ srv=""
 trap 'rm -rf "$tmp"; [ -n "$srv" ] && kill "$srv" 2>/dev/null || true' EXIT
 
 fail() { echo "FAIL: $1" >&2; exit 1; }
+unset WSL_DISTRO_NAME SSH_CONNECTION PARLEY_SSH_HOST   # plain host, also from WSL (its /health probe takes the listener)
 
 # Serve one request per argument, in order. "__CLOSE__" drops the connection without
 # answering. Each request is saved as $tmp/req.N.path and $tmp/req.N.body.
