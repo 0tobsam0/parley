@@ -520,7 +520,7 @@ public sealed class RelayClient
 
     // A phone frame the host throws away — silent before, so a phone with a wrong clock looked
     // simply unpaired. Once a minute at most (audio comes ~50 frames a second).
-    private long _droppedLogAt = long.MinValue;
+    private long _droppedLogAt = -60_000;
     private void Dropped(string kind, string why)
     {
         var now = Environment.TickCount64;
