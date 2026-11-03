@@ -18,6 +18,12 @@ public static class Groq
     public static async Task<string> Transcribe(byte[] wav, Config config) => (await TryTranscribe(wav, config)).text;
 
     // `failed`: no key, an HTTP error or no network — not silence (a turn must not park on it).
+    private static string SttLanguage(string language) => language switch
+    {
+        "English" => "en", "Français" => "fr", "Español" => "es",
+        "Italiano" => "it", "Nederlands" => "nl", _ => "de",
+    };
+
     public static async Task<(string text, bool failed)> TryTranscribe(byte[] wav, Config config)
     {
         if (!config.SttReady) return ("", true);
@@ -29,6 +35,9 @@ public static class Groq
             form.Add(file, "file", "reply.wav");
             form.Add(new StringContent("whisper-large-v3-turbo"), "model");
             form.Add(new StringContent("text"), "response_format");
+            // Sir's configured language: left to guess, Whisper takes a short German reply for
+            // English and returns nonsense ("I'm from your spot design.").
+            form.Add(new StringContent(SttLanguage(config.Language)), "language");
             using var req = new HttpRequestMessage(HttpMethod.Post,
                 "https://api.groq.com/openai/v1/audio/transcriptions");
             req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", config.GroqKey);
