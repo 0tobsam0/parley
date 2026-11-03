@@ -21,8 +21,8 @@ import kotlin.math.abs
 
 /** What the header says about the link to the host. */
 enum class ConnectionStatus(val label: String) {
-    connected("Verbunden"), hostOffline("Mac offline"), connecting("Verbinde…"),
-    unknownRoom("Mac offline"), rejected("Kopplung abgelehnt"), unreachable("Keine Verbindung"),
+    connected("Verbunden"), hostOffline("Computer offline"), connecting("Verbinde…"),
+    unknownRoom("Computer offline"), rejected("Kopplung abgelehnt"), unreachable("Keine Verbindung"),
 }
 
 /**

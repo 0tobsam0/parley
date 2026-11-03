@@ -242,7 +242,7 @@ private fun OpenedView(m: AppModel, s: SnapshotRow, c: Colors, done: () -> Unit)
     val result = m.snapshotOpened?.takeIf { it.id == s.id }
     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
         TitleRow(s.name, c, "Fertig", done)
-        Text(if (s.sessions.size == 1) "1 Session öffnet sich auf dem Mac im Hintergrund." else "${s.sessions.size} Sessions öffnen sich auf dem Mac im Hintergrund.",
+        Text(if (s.sessions.size == 1) "1 Session öffnet sich auf dem Computer im Hintergrund." else "${s.sessions.size} Sessions öffnen sich auf dem Computer im Hintergrund.",
             fontSize = 13.sp, color = c.secondary)
     }
     Column(Modifier.fillMaxWidth().card(c, radius = 18.dp)) {

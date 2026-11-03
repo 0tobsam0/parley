@@ -175,12 +175,12 @@ fun Overview(m: AppModel, openSession: (String, Boolean) -> Unit, openSettings: 
 private fun Content(m: AppModel, c: Colors, open: (String) -> Unit) {
     val relay = m.relay
     when (relay.status) {
-        ConnectionStatus.hostOffline -> Notice(c, Icons.Filled.Laptop, "Mac offline",
-            "Parley auf dem Mac ist gerade nicht mit dem Relay verbunden. Sobald er wieder online ist, erscheinen hier deine Sessions.")
-        ConnectionStatus.unknownRoom -> Notice(c, Icons.Filled.Laptop, "Mac noch nicht verbunden",
-            "Parley auf dem Mac hat sich noch nicht beim Relay gemeldet. Öffne Parley auf dem Mac – die Verbindung entsteht dann von selbst.")
+        ConnectionStatus.hostOffline -> Notice(c, Icons.Filled.Laptop, "Computer offline",
+            "Parley auf dem Computer ist gerade nicht mit dem Relay verbunden. Sobald er wieder online ist, erscheinen hier deine Sessions.")
+        ConnectionStatus.unknownRoom -> Notice(c, Icons.Filled.Laptop, "Computer noch nicht verbunden",
+            "Parley auf dem Computer hat sich noch nicht beim Relay gemeldet. Öffne Parley auf dem Computer – die Verbindung entsteht dann von selbst.")
         ConnectionStatus.rejected -> Notice(c, Icons.Filled.Lock, "Bitte neu koppeln",
-            "Das Relay hat die Kopplung abgelehnt, oder sie stammt aus einer älteren Version. Wähle in Parley auf dem Mac „Handy verbinden…“ und koppele neu.") {
+            "Das Relay hat die Kopplung abgelehnt, oder sie stammt aus einer älteren Version. Wähle in Parley auf dem Computer „Handy verbinden…“ und koppele neu.") {
             Capsule("Neu koppeln", c) { m.unpair() }
         }
         ConnectionStatus.unreachable -> Notice(c, Icons.Filled.WifiOff, "Keine Verbindung",

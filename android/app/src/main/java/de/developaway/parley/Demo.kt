@@ -56,7 +56,7 @@ object Demo {
     )
 
     val caption = Caption(
-        "Gern, Sir, der Tagesbericht als Folien. Zuerst, was heute dazugekommen ist. Gut neuntausend neue Zeilen, das meiste auf dem iPhone.".split(" "),
+        "Gern, Sir, der Tagesbericht als Folien. Zuerst, was heute dazugekommen ist. Gut neuntausend neue Zeilen, das meiste in der Handy-App.".split(" "),
         listOf(0.25, 1.04, 1.77, 2.09, 2.95, 3.27, 4.18, 5.09, 5.41, 5.85, 6.71, 7.44, 7.76, 8.56, 8.94, 9.85, 10.17, 10.67, 10.99, 11.31),
         12.0,
     )

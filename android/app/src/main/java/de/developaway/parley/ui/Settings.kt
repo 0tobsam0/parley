@@ -74,7 +74,7 @@ fun SettingsScreen(m: AppModel, close: () -> Unit) {
 
         Header("Anrufe", c)
         Group(c) {
-            Toggle("Unterwegs", "Updates klingeln als Anruf auf diesem Telefon, statt auf dem Mac gesprochen zu werden.", m.away, c) { m.changeAway(it) }
+            Toggle("Unterwegs", "Updates klingeln als Anruf auf diesem Telefon, statt auf dem Computer gesprochen zu werden.", m.away, c) { m.changeAway(it) }
             Divider(c)
             Toggle("Lautsprecher beim Anrufstart", "Kopfhörer und Auto bleiben, wie sie sind.", Prefs.speakerByDefault(ctx), c) {
                 Prefs.set(ctx, "speakerByDefault", it); tick++

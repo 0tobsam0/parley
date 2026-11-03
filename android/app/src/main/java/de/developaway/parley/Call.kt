@@ -210,7 +210,7 @@ class CallController(private val context: Context, private val scope: CoroutineS
         when (phase) {
             CallPhase.dialing, CallPhase.connecting -> begin()
             CallPhase.active -> if (line.canSend) { lossTimeout?.cancel(); lossTimeout = null } else if (lossTimeout == null) {
-                lossTimeout = scope.launch { delay(25_000); fail("Die Verbindung zu Parley auf dem Mac ist abgebrochen.") }
+                lossTimeout = scope.launch { delay(25_000); fail("Die Verbindung zu Parley auf dem Computer ist abgebrochen.") }
             }
             else -> {}
         }
@@ -230,7 +230,7 @@ class CallController(private val context: Context, private val scope: CoroutineS
         connectTimeout?.cancel()
         connectTimeout = scope.launch {
             delay(20_000)
-            if (phase == CallPhase.dialing || phase == CallPhase.connecting) fail("Parley auf dem Mac ist gerade nicht erreichbar.")
+            if (phase == CallPhase.dialing || phase == CallPhase.connecting) fail("Parley auf dem Computer ist gerade nicht erreichbar.")
         }
         begin()
     }

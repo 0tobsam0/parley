@@ -33,11 +33,11 @@ import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentPaste
-import androidx.compose.material.icons.filled.DesktopMac
 import androidx.compose.material.icons.filled.FlashlightOff
 import androidx.compose.material.icons.filled.FlashlightOn
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.QrCodeScanner
+import androidx.compose.material.icons.filled.Laptop
 import androidx.compose.material.icons.filled.WebAsset
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -93,7 +93,7 @@ fun PairingScreen(m: AppModel, error: String?, setError: (String?) -> Unit, pair
     val clip = LocalClipboardManager.current
     var scanning by remember { mutableStateOf(false) }
     fun paste() = setError(clip.getText()?.text?.takeIf { it.isNotBlank() }?.let(pair)
-        ?: "In der Zwischenablage ist kein Link. Kopieren Sie ihn am Mac unter „Handy verbinden…“.")
+        ?: "In der Zwischenablage ist kein Link. Kopieren Sie ihn am Computer unter „Handy verbinden…“.")
 
     if (scanning || m.welcoming) {
         BackHandler { scanning = false }
@@ -114,9 +114,9 @@ fun PairingScreen(m: AppModel, error: String?, setError: (String?) -> Unit, pair
         }
         Text("Guten Tag, Sir.", fontSize = 32.sp, fontWeight = FontWeight.Bold, color = c.text, textAlign = TextAlign.Center)
         Spacer(Modifier.height(8.dp))
-        Text("Ein Code vom Mac, und Ihre Sessions sind hier.", fontSize = 17.sp, color = c.secondary, textAlign = TextAlign.Center)
+        Text("Ein Code vom Computer, und Ihre Sessions sind hier.", fontSize = 17.sp, color = c.secondary, textAlign = TextAlign.Center)
         Spacer(Modifier.height(22.dp))
-        HintCard(Icons.Filled.DesktopMac, "Auf dem Mac", "Parley-Menü → „Handy verbinden…“")
+        HintCard(Icons.Filled.Laptop, "Auf dem Computer", "Parley-Menü → „Handy verbinden…“")
         Spacer(Modifier.height(22.dp))
         Row(Modifier.fillMaxWidth().height(56.dp).clip(RoundedCornerShape(28.dp)).background(c.accent).clickable { scanning = true },
             horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
@@ -131,7 +131,7 @@ fun PairingScreen(m: AppModel, error: String?, setError: (String?) -> Unit, pair
         Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(Icons.Filled.Lock, null, tint = c.secondary, modifier = Modifier.size(14.dp))
             Spacer(Modifier.width(6.dp))
-            Text("Verschlüsselt · nur Ihr Mac und Ihr Handy", fontSize = 14.sp, color = c.secondary)
+            Text("Verschlüsselt · nur Ihr Computer und Ihr Handy", fontSize = 14.sp, color = c.secondary)
         }
         Spacer(Modifier.height(16.dp))
     }
@@ -181,7 +181,7 @@ private fun ScannerScreen(m: AppModel, pair: (String) -> String?, paste: () -> U
         }
         Text("Code scannen", fontSize = 32.sp, fontWeight = FontWeight.Bold, color = c.text)
         Spacer(Modifier.height(6.dp))
-        Text("Halten Sie das Handy auf den Code am Mac.", fontSize = 17.sp, color = c.secondary)
+        Text("Halten Sie das Handy auf den Code am Computer.", fontSize = 17.sp, color = c.secondary)
 
         val tile = 290.dp
         Box(Modifier.fillMaxWidth().height(tile + 70.dp), contentAlignment = Alignment.Center) {
@@ -212,10 +212,10 @@ private fun ScannerScreen(m: AppModel, pair: (String) -> String?, paste: () -> U
             val n = m.relay.snapshot?.sessions?.size ?: 0
             Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
                 Text("Verbunden, Sir.", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = c.text)
-                Text(if (n == 0) "Ihr Mac" else "Ihr Mac · $n ${if (n == 1) "Session" else "Sessions"}", fontSize = 16.sp, color = c.secondary)
+                Text(if (n == 0) "Ihr Computer" else "Ihr Computer · $n ${if (n == 1) "Session" else "Sessions"}", fontSize = 16.sp, color = c.secondary)
             }
         } else {
-            HintCard(Icons.Filled.WebAsset, "Kein Code zu sehen?", "Mac: Parley-Menü → „Handy verbinden…“")
+            HintCard(Icons.Filled.WebAsset, "Kein Code zu sehen?", "Computer: Parley-Menü → „Handy verbinden…“")
             (scanError ?: error)?.let { Text(it, color = c.red, fontSize = 15.sp, modifier = Modifier.padding(top = 10.dp)) }
         }
         Spacer(Modifier.weight(1f))
